@@ -14,6 +14,31 @@ function generateRandomString() {
   return Math.random().toString(36).substr(2, 6);
 }
 
+const users = {
+
+}
+
+function findEmail(email) {
+  for(const user in users) {
+    console.log(user);
+    if(users[user].email === email) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function findEmailPassword(email, password) {
+  for(const user in users) {
+    if(users[user].email === email && users[user].password === password) {
+      return users[user];
+    }
+  }
+
+  return null;
+}
+
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
@@ -33,9 +58,46 @@ app.get("/u/:shortURL", (req, res) => {
   res.send();
 });
 
-app.post("/login", (req, res) => {
-  res.cookie("username", req.body.username);
+app.get("/register", (req, res) => {
+  res.render('urls_register');
+});
+
+app.post("/register", (req, res) => {
+  const { email, password } = req.body;
+  const randomID = generateRandomString();
+
+  if(email === "" || password === "" || findEmail(email)) {
+    res.status(400);
+    res.send();
+  }
+
+  console.log(findEmail(email));
+
+  users[randomID] = {
+    id: randomID,
+    email,
+    password
+  }
+
+  res.cookie('user_id', randomID);
+
   res.redirect("/urls");
+});
+
+app.get("/login", (req, res) => {
+  res.render('urls_login');
+});
+
+app.post("/login", (req, res) => {
+  const { email, password } = req.body;
+  const foundUser = findEmailPassword(email, password);
+  if(foundUser) {
+    res.cookie("user_id", foundUser.id);
+    res.redirect("/urls");
+  }
+
+  res.status(403);
+  res.send();
 });
 
 app.post("/urls/:shortURL", (req, res) => {
@@ -73,12 +135,19 @@ app.post("/urls", (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie("username");
+  res.clearCookie("user_id");
   res.redirect("/urls");
 });
 
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  let templateVars = {user_email: undefined, urls: urlDatabase};
+
+  if(users[req.cookies["user_id"]]) {
+    const { email } = users[req.cookies["user_id"]];
+    templateVars["user_email"] = email;
+  }
+
+  res.render("urls_new", templateVars);
 });
 
 app.get("/urls.json", (req, res) => {
@@ -86,7 +155,13 @@ app.get("/urls.json", (req, res) => {
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { username: req.cookies["username"] ?? "", urls: urlDatabase };
+  let templateVars = {user_email: undefined, urls: urlDatabase};
+
+  if(users[req.cookies["user_id"]]) {
+    const { email } = users[req.cookies["user_id"]];
+    templateVars["user_email"] = email;
+  }
+
   res.render("urls_index", templateVars);
 });
 
