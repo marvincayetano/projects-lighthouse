@@ -9,40 +9,45 @@ app.use(cookieParser());
 app.use(bodyParser.urlencoded({extended: true}));
 app.set("view engine", "ejs");
 
-function generateRandomString() {
+// Generates random string
+const generateRandomString = () => {
   // string of 6 random alphanumeric characters
   return Math.random().toString(36).substr(2, 6);
-}
+};
 
+// Main user
 const users = {
   "asdff": {
     id: "asdff",
     email: "cayetanomarvin@gmail.com",
-    password: "papa",
+    password: "asd123",
   }
-}
+};
 
-function findEmail(email) {
-  for(const user in users) {
+// Function that finds existing email
+const findEmail = (email) => {
+  for (const user in users) {
     console.log(user);
-    if(users[user].email === email) {
+    if (users[user].email === email) {
       return true;
     }
   }
 
   return false;
-}
+};
 
-function findEmailPassword(email, password) {
-  for(const user in users) {
-    if(users[user].email === email && users[user].password === password) {
+// Function that finds existing email with password
+const findEmailPassword = (email, password) => {
+  for (const user in users) {
+    if (users[user].email === email && users[user].password === password) {
       return users[user];
     }
   }
 
   return null;
-}
+};
 
+// Database
 const urlDatabase = {
   "b2xVn2": {
     longURL: "http://www.lighthouselabs.ca",
@@ -57,12 +62,12 @@ const urlDatabase = {
 };
 
 app.get("/", (req, res) => {
-  res.send("Hello!");
+  res.redirect("/login");
 });
 
 app.get("/u/:shortURL", (req, res) => {
   const data = urlDatabase[req.params.shortURL];
-  if(data) {
+  if (data) {
     res.redirect(data.longURL);
   }
 
@@ -78,7 +83,7 @@ app.post("/register", (req, res) => {
   const { email, password } = req.body;
   const randomID = generateRandomString();
 
-  if(email === "" || password === "" || findEmail(email)) {
+  if (email === "" || password === "" || findEmail(email)) {
     res.status(400);
     res.send();
   }
@@ -89,7 +94,7 @@ app.post("/register", (req, res) => {
     id: randomID,
     email,
     password
-  }
+  };
 
   res.cookie('user_id', randomID);
 
@@ -103,7 +108,7 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
   const foundUser = findEmailPassword(email, password);
-  if(foundUser) {
+  if (foundUser) {
     res.cookie("user_id", foundUser.id);
     res.redirect("/urls");
   }
@@ -117,13 +122,13 @@ app.post("/urls/:shortURL", (req, res) => {
   const { shortURL } = req.params;
   const userID = req.cookies["user_id"];
 
-  if(shortURL && longURL && userID === urlDatabase[shortURL].userID) {
+  if (shortURL && longURL && userID === urlDatabase[shortURL].userID) {
     urlDatabase[shortURL] = {
       longURL,
       shortURL,
       userID
     };
-    res.redirect("/urls/" + shortURL );
+    res.redirect("/urls/" + shortURL);
   }
 
   res.status(500);
@@ -134,8 +139,8 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   const { shortURL } = req.params;
   const userID = req.cookies["user_id"];
 
-  if(shortURL && userID) {
-    if(userID === urlDatabase[shortURL].userID) {
+  if (shortURL && userID) {
+    if (userID === urlDatabase[shortURL].userID) {
       delete urlDatabase[shortURL];
     }
   }
@@ -164,13 +169,14 @@ app.post("/logout", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
-  if(!req.cookies["user_id"]) {
+  if (!req.cookies["user_id"]) {
     res.redirect('/login');
   }
 
+  // eslint-disable-next-line
   let templateVars = {user_email: undefined, urls: urlDatabase};
 
-  if(users[req.cookies["user_id"]]) {
+  if (users[req.cookies["user_id"]]) {
     const { email } = users[req.cookies["user_id"]];
     templateVars["user_email"] = email;
   }
@@ -184,20 +190,21 @@ app.get("/urls.json", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const userID = req.cookies["user_id"];
-  if(!userID) {
+  if (!userID) {
     res.redirect('/login');
   }
 
   const urls = [];
-  for(const url in urlDatabase) {
-    if(urlDatabase[url].userID === userID) {
+  for (const url in urlDatabase) {
+    if (urlDatabase[url].userID === userID) {
       urls.push(urlDatabase[url]);
     }
   }
 
+  // eslint-disable-next-line
   let templateVars = {user_email: undefined, urls};
 
-  if(users[req.cookies["user_id"]]) {
+  if (users[req.cookies["user_id"]]) {
     const { email } = users[req.cookies["user_id"]];
     templateVars["user_email"] = email;
   }
@@ -207,11 +214,12 @@ app.get("/urls", (req, res) => {
 
 app.get("/urls/:shortURL", (req, res) => {
   const userID = req.cookies["user_id"];
-  if(!userID) {
+  if (!userID) {
     res.redirect('/login');
   }
 
-  if(urlDatabase[req.params.shortURL].userID === userID) {
+  // Comparing the value from the DB userID to the cookies userID
+  if (urlDatabase[req.params.shortURL].userID === userID) {
     const templateVars = { shortURL: req.params.shortURL, data: urlDatabase[req.params.shortURL] };
     res.render("urls_show", templateVars);
   }
@@ -220,11 +228,6 @@ app.get("/urls/:shortURL", (req, res) => {
   res.send();
 });
 
-app.get("/hello", (req, res) => {
-  const templateVars = { greeting: 'Hello World!' };
-  res.render("hello_world", templateVars);
-});
-
 app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}!`);
+  console.log(`Tiny app listening on port ${PORT}!`);
 });
