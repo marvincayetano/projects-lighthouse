@@ -20,12 +20,14 @@
     </div>
     <% if(typeof user_email != "undefined") { %>
     <div class="navbar-nav">
-      <form method="POST" action="/logout">
-        <p>
-          Logged in as: <%= user_email %>
-          <button class="btn btn-primary">Logout</button>
-        </p>
-      </form>
+      <div class="nav-item nav-link">
+        <form method="POST" action="/logout">
+          <p>
+            Logged in as: <%= user_email %>
+            <button class="btn btn-primary">Logout</button>
+          </p>
+        </form>
+      </div>
     </div>
     <% } else { %>
     <div class="navbar-nav">
