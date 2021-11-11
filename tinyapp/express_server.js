@@ -3,6 +3,8 @@ const app = express();
 const PORT = 8080; // default port 8080
 const bodyParser = require("body-parser");
 const cookieParser = require('cookie-parser');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 app.use(cookieParser());
 
@@ -20,7 +22,7 @@ const users = {
   "asdff": {
     id: "asdff",
     email: "cayetanomarvin@gmail.com",
-    password: "asd123",
+    password: bcrypt.hashSync("asd123", saltRounds),
   }
 };
 
@@ -39,7 +41,7 @@ const findEmail = (email) => {
 // Function that finds existing email with password
 const findEmailPassword = (email, password) => {
   for (const user in users) {
-    if (users[user].email === email && users[user].password === password) {
+    if (users[user].email === email && bcrypt.compareSync(password, users[user].password )) {
       return users[user];
     }
   }
@@ -68,7 +70,7 @@ app.get("/", (req, res) => {
 app.get("/u/:shortURL", (req, res) => {
   const data = urlDatabase[req.params.shortURL];
   if (data) {
-    res.redirect(data.longURL);
+    return res.redirect(data.longURL);
   }
 
   res.status(500);
@@ -85,15 +87,13 @@ app.post("/register", (req, res) => {
 
   if (email === "" || password === "" || findEmail(email)) {
     res.status(400);
-    res.send();
+    return res.send();
   }
-
-  console.log(findEmail(email));
 
   users[randomID] = {
     id: randomID,
     email,
-    password
+    password: bcrypt.hashSync(password, saltRounds)
   };
 
   res.cookie('user_id', randomID);
@@ -108,9 +108,10 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res) => {
   const { email, password } = req.body;
   const foundUser = findEmailPassword(email, password);
+
   if (foundUser) {
     res.cookie("user_id", foundUser.id);
-    res.redirect("/urls");
+    return res.redirect("/urls");
   }
 
   res.status(403);
@@ -128,7 +129,7 @@ app.post("/urls/:shortURL", (req, res) => {
       shortURL,
       userID
     };
-    res.redirect("/urls/" + shortURL);
+    return res.redirect("/urls/" + shortURL);
   }
 
   res.status(500);
@@ -157,7 +158,7 @@ app.post("/urls", (req, res) => {
     urlDatabase[randomString] = { longURL, shortURL: randomString, userID };
 
     console.log(urlDatabase);
-    res.redirect(`/urls/${randomString}`);
+    return res.redirect(`/urls/${randomString}`);
   }
 
 
@@ -170,7 +171,7 @@ app.post("/logout", (req, res) => {
 
 app.get("/urls/new", (req, res) => {
   if (!req.cookies["user_id"]) {
-    res.redirect('/login');
+    return res.redirect('/login');
   }
 
   // eslint-disable-next-line
@@ -191,7 +192,7 @@ app.get("/urls.json", (req, res) => {
 app.get("/urls", (req, res) => {
   const userID = req.cookies["user_id"];
   if (!userID) {
-    res.redirect('/login');
+    return res.redirect('/login');
   }
 
   const urls = [];
@@ -215,13 +216,13 @@ app.get("/urls", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const userID = req.cookies["user_id"];
   if (!userID) {
-    res.redirect('/login');
+    return res.redirect('/login');
   }
 
   // Comparing the value from the DB userID to the cookies userID
   if (urlDatabase[req.params.shortURL].userID === userID) {
-    const templateVars = { shortURL: req.params.shortURL, data: urlDatabase[req.params.shortURL] };
-    res.render("urls_show", templateVars);
+    const templateVars = { user_email: users[req.cookies["user_id"]].email,shortURL: req.params.shortURL, data: urlDatabase[req.params.shortURL] };
+    return res.render("urls_show", templateVars);
   }
 
   res.status(403);
