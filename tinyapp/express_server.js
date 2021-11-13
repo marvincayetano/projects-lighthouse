@@ -73,16 +73,17 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.get("/register", (req, res) => {
-  res.render('urls_register');
+  res.render('urls_register', { error: { emailPassword: false, emailExists: false }});
 });
 
 app.post("/register", (req, res) => {
   const { email, password } = req.body;
   const randomID = generateRandomString();
 
-  if (email === "" || password === "" || findEmail(email, users)) {
-    res.status(400);
-    return res.send();
+  if (email === "" || password === "") {
+    return res.render('urls_register', { error: { emailPassword: true }});
+  } else if (findEmail(email, users)) {
+    return res.render('urls_register', { error: { emailExists: true }});
   }
 
   users[randomID] = {
@@ -102,7 +103,7 @@ app.get("/login", (req, res) => {
     res.redirect('/urls');
   }
 
-  res.render('urls_login');
+  res.render('urls_login', { error: false });
 });
 
 app.post("/login", (req, res) => {
@@ -112,11 +113,10 @@ app.post("/login", (req, res) => {
   if (foundUser) {
     // eslint-disable-next-line
     req.session.user_id = foundUser.id;
-    return res.redirect("/urls");
+    res.redirect('/urls');
   }
 
-  res.status(403);
-  res.send();
+  res.render('urls_login', { error: { invalidUser: true } })
 });
 
 app.post("/urls/:shortURL", (req, res) => {
@@ -133,8 +133,7 @@ app.post("/urls/:shortURL", (req, res) => {
     return res.redirect("/urls/" + shortURL);
   }
 
-  res.status(500);
-  res.send();
+  res.render('urls_index', { error: true })
 });
 
 app.post("/urls/:shortURL/delete", (req, res) => {
@@ -171,7 +170,7 @@ app.post("/logout", (req, res) => {
 
 app.get("/urls/new", (req, res) => {
   if (!req.session.user_id) {
-    return res.redirect('/login');
+    return res.render('urls_login', { error: { invalidAccess: true } });
   }
 
   // eslint-disable-next-line
@@ -192,7 +191,7 @@ app.get("/urls.json", (req, res) => {
 app.get("/urls", (req, res) => {
   const userID = req.session.user_id;
   if (!userID) {
-    return res.redirect('/login');
+    return res.render('urls_login', { error: { invalidAccess: true } });
   }
 
   const urls = [];
@@ -203,7 +202,7 @@ app.get("/urls", (req, res) => {
   }
 
   // eslint-disable-next-line
-  let templateVars = {user_email: undefined, urls};
+  let templateVars = {user_email: undefined, urls, error: false};
 
   if (users[req.session.user_id]) {
     const { email } = users[req.session.user_id];
@@ -216,18 +215,20 @@ app.get("/urls", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   const userID = req.session.user_id;
   if (!userID) {
-    return res.redirect('/login');
+    return res.render('urls_login', { error: { invalidAccess: true }});
   }
 
+  let templateVars = { user_email: users[userID].email };
   // Comparing the value from the DB userID to the cookies userID
-  if (urlDatabase[req.params.shortURL].userID === userID) {
-    // eslint-disable-next-line
-    const templateVars = { user_email: users[req.session.user_id].email,shortURL: req.params.shortURL, data: urlDatabase[req.params.shortURL] };
-    return res.render("urls_show", templateVars);
-  }
+  const { shortURL } = req.params;
 
-  res.status(403);
-  res.send();
+  if (urlDatabase[shortURL] && urlDatabase[shortURL].userID === userID) {
+    // eslint-disable-next-line
+    templateVars = { ...templateVars, shortURL: req.params.shortURL, data: urlDatabase[req.params.shortURL] };
+    res.render("urls_show", templateVars);
+  } else {
+    res.render('urls_index', { ...templateVars, error: true })
+  }
 });
 
 app.listen(PORT, () => {
